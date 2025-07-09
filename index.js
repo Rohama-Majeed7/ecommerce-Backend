@@ -20,7 +20,9 @@ app.use(
 app.use(cookieParser());
 app.use(express.json());
 // app.use(express.urlencoded());
-
+app.get("/",(_,res) =>{
+  res.send("Backend is running")
+})
 const PORT = 8080 || process.env.PORT;
 app.use("/user", userRouter);
 app.use("/product", productRouter);
