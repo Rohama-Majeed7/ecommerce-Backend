@@ -155,7 +155,7 @@ const webhooks = async (request, response) => {
 // ====================================================
 const orderController = async (request, response) => {
   try {
-    const { userId } = request.body;
+    const { userId } = request.user;
 
     const orderList = await orderModel
       .find({ userId: userId })
@@ -167,9 +167,11 @@ const orderController = async (request, response) => {
       success: true,
     });
   } catch (error) {
+        const { userId } = request.user;
     response.status(500).json({
       message: error.message || error,
       error: true,
+      userId
     });
   }
 };
