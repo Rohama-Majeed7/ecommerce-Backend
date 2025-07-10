@@ -1,21 +1,19 @@
+// import { response ,r} from "express";
 import stripe from "../config/stripe.js";
 import userModel from "../models/user.model.js";
 import orderModel from "../models/order.model.js";
 import cartModel from "../models/cart.model.js";
+const endpointSecret =process.env.ENDPOINT_KEY;
 
-const endpointSecret = process.env.ENDPOINT_KEY;
-
-// ===============================
-// 1. PAYMENT CONTROLLER
-// ===============================
 const paymentController = async (request, response) => {
   try {
     const { cartItems } = request.body;
+    console.log(cartItems);
+
     const { userId } = request.user;
+    const user = await userModel.findOne({ _id: userId });
 
-    const user = await userModel.findById(userId);
-
-    const session = await stripe.checkout.sessions.create({
+    const params = {
       submit_type: "pay",
       mode: "payment",
       payment_method_types: ["card"],
@@ -29,83 +27,100 @@ const paymentController = async (request, response) => {
       metadata: {
         userId: userId,
       },
-      line_items: cartItems.map((item) => ({
-        price_data: {
-          currency: "usd",
-          product_data: {
-            name: item.productId.productName,
-            images: item.productId.productImage,
-            metadata: {
-              productId: item.productId._id,
+      line_items: cartItems.map((item, index) => {
+        return {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: item.productId.productName,
+              images: item.productId.productImage,
+              metadata: {
+                productId: item.productId._id,
+              },
             },
+            unit_amount: item.productId.sellingPrice * 100,
           },
-          unit_amount: item.productId.sellingPrice * 100,
-        },
-        adjustable_quantity: {
-          enabled: true,
-          minimum: 1,
-        },
-        quantity: item.quantity,
-      })),
+          adjustable_quantity: {
+            enabled: true,
+            minimum: 1,
+          },
+          quantity: item.quantity,
+        };
+      }),
       success_url: `https://ecommerce-frontend-blond-five.vercel.app/success`,
       cancel_url: `https://ecommerce-frontend-blond-five.vercel.app/cancel`,
-    });
+    };
+
+    const session = await stripe.checkout.sessions.create(params);
 
     response.status(200).json(session);
   } catch (error) {
-    response.status(500).json({
-      message: error?.message || "Payment error",
+    response.json({
+      message: error?.message || error,
       error: true,
       success: false,
     });
   }
 };
+// ==============================================
+async function getLIneItems(lineItems) {
+  let ProductItems = [];
 
-// ===============================
-// 2. GET LINE ITEMS HELPER
-// ===============================
-const getLineItems = async (lineItems) => {
-  const items = [];
+  if (lineItems?.data?.length) {
+    for (const item of lineItems.data) {
+      const product = await stripe.products.retrieve(item.price.product);
+      const productId = product.metadata.productId;
 
-  for (const item of lineItems.data) {
-    const product = await stripe.products.retrieve(item.price.product);
-    items.push({
-      productId: product.metadata.productId,
-      name: product.name,
-      price: item.price.unit_amount / 100,
-      quantity: item.quantity,
-      image: product.images,
-    });
+      const productData = {
+        productId: productId,
+        name: product.name,
+        price: item.price.unit_amount / 100,
+        quantity: item.quantity,
+        image: product.images,
+      };
+      ProductItems.push(productData);
+    }
   }
 
-  return items;
-};
+  return ProductItems;
+}
 
-// ===============================
-// 3. STRIPE WEBHOOK
-// ===============================
 const webhooks = async (request, response) => {
-  const sig = request.headers["stripe-signature"];
+   request.headers["stripe-signature"];
+
+  const payloadString = JSON.stringify(request.body);
+
+  const header = stripe.webhooks.generateTestHeaderString({
+    payload: payloadString,
+    secret: endpointSecret,
+  });
 
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
+    event = stripe.webhooks.constructEvent(
+      payloadString,
+      header,
+      endpointSecret
+    );
   } catch (err) {
-    console.error("❌ Webhook signature error:", err.message);
-    return response.status(400).send(`Webhook Error: ${err.message}`);
+    response.status(400).send(`Webhook Error: ${err.message}`);
+    return;
   }
 
-  // ✅ Handle checkout completion
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
+  // Handle the event
+  switch (event.type) {
+    case "checkout.session.completed":
+      const session = event.data.object;
 
-    try {
-      const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-      const productDetails = await getLineItems(lineItems);
+      const lineItems = await stripe.checkout.sessions.listLineItems(
+        session.id
+      );
+
+      const productDetails = await getLIneItems(lineItems);
 
       const orderDetails = {
-        productDetails,
+        productDetails: productDetails,
         email: session.customer_email,
         userId: session.metadata.userId,
         paymentDetails: {
@@ -113,69 +128,64 @@ const webhooks = async (request, response) => {
           payment_method_type: session.payment_method_types,
           payment_status: session.payment_status,
         },
-        shipping_options: session.shipping_options?.map((s) => ({
-          ...s,
-          shipping_amount: s.shipping_amount / 100,
-        })),
+        shipping_options: session.shipping_options.map((s) => {
+          return {
+            ...s,
+            shipping_amount: s.shipping_amount / 100,
+          };
+        }),
         totalAmount: session.amount_total / 100,
       };
 
       const order = new orderModel(orderDetails);
-      const saved = await order.save();
+      const saveOrder = await order.save();
 
-      if (saved?._id) {
-        await cartModel.deleteMany({ userId: session.metadata.userId });
-        console.log("✅ Order saved and cart cleared.");
+      if (saveOrder?._id) {
+         await cartModel.deleteMany({
+          userId: session.metadata.userId,
+        });
       }
-    } catch (err) {
-      console.error("❌ Error saving order:", err.message);
-    }
+      break;
+    // ... handle other event types
+    default:
+      console.log(`Unhandled event type ${event.type}`);
   }
-
-  response.status(200).send("Received");
+  response.status(200).send();
 };
-
-// ===============================
-// 4. ORDER CONTROLLER
-// ===============================
+// ====================================================
 const orderController = async (request, response) => {
   try {
     const { userId } = request.user;
 
     const orderList = await orderModel
-      .find({ userId })
+      .find({ userId: userId })
       .sort({ createdAt: -1 });
 
-    response.status(200).json({
+    response.json({
       data: orderList,
-      message: "User orders",
+      message: "Order list",
       success: true,
     });
   } catch (error) {
+        const { userId } = request.user;
     response.status(500).json({
-      message: error.message,
+      message: error.message || error,
       error: true,
+      userId
     });
   }
 };
-
-// ===============================
-// 5. ALL ORDERS FOR ADMIN
-// ===============================
 const allOrderController = async (request, response) => {
-  try {
-    const orders = await orderModel.find().sort({ createdAt: -1 });
+  const {userId} = request.user;
 
-    return response.status(200).json({
-      data: orders,
-      success: true,
-    });
-  } catch (error) {
-    response.status(500).json({
-      message: error.message,
-      error: true,
-    });
-  }
+   await userModel.findById(userId);
+
+  const AllOrder = await orderModel.find().sort({ createdAt: -1 });
+
+  return response.status(200).json({
+    data: AllOrder,
+    success: true,
+  });
 };
 
 export { paymentController, webhooks, orderController, allOrderController };
