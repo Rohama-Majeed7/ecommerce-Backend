@@ -54,14 +54,14 @@ const addToWishlist = async (req, res) => {
 const getWishlist = async (req, res) => {
   const { userId } = req.params;
   console.log("wishlist user:", userId);
-
+const user = req.user
   // const userId = req.user.id
   try {
     const wishlist = await wishList.findOne({ userId });
     if (!wishlist) {
       return res.status(404).json({ message: "Wishlist not found" });
     }
-    res.status(200).json(wishlist);
+    res.status(200).json(wishlist,{user:user});
   } catch (err) {
     res
       .status(500)
