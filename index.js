@@ -9,7 +9,7 @@ import productRouter from "./routes/product.route.js";
 import cartRouter from "./routes/cart.route.js";
 import wishlistRouter from "./routes/wishList.route.js";
 import reviewRouter from "./routes/review.route.js";
-import chatRouter from "./routes/chat.route.js";
+import chatRouter from "./routes/chat.route.js"
 const app = express();
 app.use(
   cors({
@@ -18,12 +18,12 @@ app.use(
   })
 );
 app.use(cookieParser());
-app.post("/webhooks", express.raw({ type: "application/json" }), webhooks);
+
 app.use(express.json());
 // app.use(express.urlencoded());
-app.get("/", (_, res) => {
-  res.send("Backend is running");
-});
+app.get("/",(_,res) =>{
+  res.send("Backend is running")
+})
 const PORT = 8080 || process.env.PORT;
 app.use("/user", userRouter);
 app.use("/product", productRouter);
@@ -31,6 +31,7 @@ app.use("/cart", cartRouter);
 app.use("/wishlistApi", wishlistRouter);
 app.use("/review", reviewRouter);
 app.use("/chat", chatRouter);
+
 
 connectDB().then(() => {
   app.listen(PORT, () => {
