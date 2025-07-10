@@ -4,34 +4,36 @@ const addToCart = async (req, res) => {
   try {
     const { productId } = req.body; // Use req.body directly, no need for optional chaining.
     const { userId } = req.user; // Assuming userId is available from req.user
-  
+    const user = req.user;
     // Check if the product already exists for this specific user
     const isProductAvailable = await cartModel.findOne({ productId, userId });
     if (isProductAvailable) {
       return res.json({ msg: "Product already exists in cart" });
     }
-  
+
     // Create a new cart item if not already present
     const payLoad = {
       productId: productId,
       quantity: 1,
       userId: userId,
     };
-  
+
     const newCart = new cartModel(payLoad);
     const saveProduct = await newCart.save();
-  
+
     return res.json({
       data: saveProduct,
       msg: "Product added to cart",
       success: true,
       error: false,
+      user
     });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ msg: "Something went wrong", success: false, error: true });
+    return res
+      .status(500)
+      .json({ msg: "Something went wrong", success: false, error: true });
   }
-  
 };
 
 const countCartItems = async (req, res) => {
@@ -92,9 +94,9 @@ const updateAddToCartProduct = async (req, res) => {
 const deleteCartProduct = async (req, res) => {
   try {
     // const { currentUser } = req.user;
-    const {productID} = req.params;
-    console.log("productID",productID);
-    
+    const { productID } = req.params;
+    console.log("productID", productID);
+
     const deletedProduct = await cartModel.deleteOne({ _id: productID });
     console.log("deleted Product", deletedProduct);
     if (deletedProduct.deletedCount > 0) {
@@ -112,5 +114,5 @@ export {
   countCartItems,
   addToCartViewProduct,
   updateAddToCartProduct,
-  deleteCartProduct
+  deleteCartProduct,
 };
