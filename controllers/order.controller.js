@@ -155,7 +155,7 @@ const webhooks = async (request, response) => {
 // ====================================================
 const orderController = async (request, response) => {
   try {
-    const { userId } = request.user;
+    const { userId } = request.body;
 
     const orderList = await orderModel
       .find({ userId: userId })
