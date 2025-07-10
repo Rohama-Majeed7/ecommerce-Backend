@@ -4,7 +4,7 @@ const addToCart = async (req, res) => {
   try {
     const { productId } = req.body; // Use req.body directly, no need for optional chaining.
     const { userId } = req.user; // Assuming userId is available from req.user
-    const user = req.user;
+    // const user = req.user;
     // Check if the product already exists for this specific user
     const isProductAvailable = await cartModel.findOne({ productId, userId });
     if (isProductAvailable) {
@@ -26,7 +26,7 @@ const addToCart = async (req, res) => {
       msg: "Product added to cart",
       success: true,
       error: false,
-      user
+      userId:userId
     });
   } catch (error) {
     console.log(error);
