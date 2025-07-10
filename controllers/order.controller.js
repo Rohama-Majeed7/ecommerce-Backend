@@ -47,8 +47,8 @@ const paymentController = async (request, response) => {
           quantity: item.quantity,
         };
       }),
-      success_url: `http://localhost:5173/success`,
-      cancel_url: `http://localhost:5173/cancel`,
+      success_url: `https://ecommerce-frontend-blond-five.vercel.app/success`,
+      cancel_url: `https://ecommerce-frontend-blond-five.vercel.app/cancel`,
     };
 
     const session = await stripe.checkout.sessions.create(params);
