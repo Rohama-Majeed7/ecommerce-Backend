@@ -9,7 +9,8 @@ const addReview =  async (req, res) => {
       console.log("add review");
       res.status(201).json({ message: 'Review added successfully', review });
     } catch (error) {
-      res.status(500).json({ message: 'Error adding review', error });
+            const body = req.body;
+      res.status(500).json({ message: 'Error adding review', error ,body:body});
     }
   };
   
