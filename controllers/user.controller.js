@@ -2,7 +2,7 @@ import userModel from "../models/user.model.js";
 import bcrypt from "bcrypt";
 // for sign up
 const signUp = async (req, res) => {
-  const { username, email, password, profilePic,role } = req.body;
+  const { username, email, password, profilePic, role } = req.body;
   const salt = await bcrypt.genSalt(10);
   const hashPassword = await bcrypt.hash(password, salt);
   //  user existence
@@ -36,10 +36,14 @@ const login = async (req, res) => {
   //   // secure: true,
   // };
   if (userExist) {
-     await bcrypt.compare(password, userExist.password);
+    await bcrypt.compare(password, userExist.password);
     const token = await userExist.generateToken();
-    return res
-      .cookie("token", token)
+    return res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    })
       .json({ msg: "Login Successfully", status: 400, token, user: userExist });
   } else {
     return res.json({ msg: "someThing went wrong" });
