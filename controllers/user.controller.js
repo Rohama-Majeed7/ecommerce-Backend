@@ -28,25 +28,50 @@ const signUp = async (req, res) => {
 };
 // for login
 const login = async (req, res) => {
-  const { email, password } = req.body;
-  //  user existence
-  const userExist = await userModel.findOne({ email }).select("_password");
-  // const tokenOptions = {
-  //   httpOnly: true,
-  //   // secure: true,
-  // };
-  if (userExist) {
-    await bcrypt.compare(password, userExist.password);
+  try {
+    const { email, password } = req.body;
+
+    const userExist = await userModel
+      .findOne({ email })
+      .select("+password");
+
+    if (!userExist) {
+      return res.status(404).json({
+        msg: "User not found",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(
+      password,
+      userExist.password
+    );
+
+    if (!isMatch) {
+      return res.status(400).json({
+        msg: "Invalid password",
+      });
+    }
+
     const token = await userExist.generateToken();
-    return res.cookie("token", token, {
+
+    res.cookie("token", token, {
       httpOnly: true,
-      secure: true,
+      secure: true, 
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-    })
-      .json({ msg: "Login Successfully", status: 400, token, user: userExist });
-  } else {
-    return res.json({ msg: "someThing went wrong" });
+    });
+
+    return res.status(200).json({
+      msg: "Login Successfully",
+      token,
+      user: userExist,
+    });
+  } catch (error) {
+    console.error("Login Error:", error);
+
+    return res.status(500).json({
+      msg: error.message,
+    });
   }
 };
 const userDetails = async (req, res) => {
