@@ -30,7 +30,7 @@ const signUp = async (req, res) => {
 const login = async (req, res) => {
   const { email, password } = req.body;
   //  user existence
-  const userExist = await userModel.findOne({ email });
+  const userExist = await userModel.findOne({ email }).select("_password");
   // const tokenOptions = {
   //   httpOnly: true,
   //   // secure: true,
