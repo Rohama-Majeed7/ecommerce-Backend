@@ -33,7 +33,7 @@ userSchema.methods.generateToken = function () {
     email: this.email,
     profilePic: this.profilePic,
   };
-  const token = jwt.sign(tokenData, process.env.JWT_SECRET, { expiresIn: "30d" });
+  const token = jwt.sign(tokenData, process.env.JWT_SECRET || "helloromi", { expiresIn: "30d" });
 
   return token;
 };
