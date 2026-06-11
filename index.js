@@ -1,8 +1,6 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import dotenv from "dotenv";
-dotenv.config();
 import connectDB from "./config/db.js";
 import userRouter from "./routes/user.route.js";
 import productRouter from "./routes/product.route.js";
@@ -10,10 +8,12 @@ import cartRouter from "./routes/cart.route.js";
 import wishlistRouter from "./routes/wishList.route.js";
 import reviewRouter from "./routes/review.route.js";
 import chatRouter from "./routes/chat.route.js"
+import dotenv from "dotenv";
+dotenv.config();
 const app = express();
 app.use(
   cors({
-    origin: "https://ecommerce-frontend-blond-five.vercel.app",
+    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
     credentials: true,
   })
 );
